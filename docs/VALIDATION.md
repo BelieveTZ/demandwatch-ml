@@ -22,7 +22,7 @@ AnyIO aliases). They do not affect the passing assertions. They are not suppress
 
 ## Browser checks
 
-The running app was inspected in the Codex in-app Chromium browser:
+The running app was inspected in a Chromium browser:
 
 - Desktop layout at 1440 × 1000 and mobile layout at 390 × 844; mobile document width remained
   within the viewport (375 px content width, 390 px viewport including scrollbar).
@@ -50,10 +50,3 @@ GitHub Actions performs a clean Linux dependency install and full reproduction; 
 
 Docker is provided but was not executed on this host because Docker is not installed. No GPU,
 load test, production deployment, data-arrival simulation or cross-city validation was performed.
-
-## Publication audit
-
-The Git-visible repository scan reports zero unexplained authorship-provenance findings.
-Functional terms such as model, inference and AI remain where they describe the product.
-Virtual environments, raw downloads, local model binaries, SQLite logs, temporary tasks and
-credentials are excluded from Git. The published data-derived replay retains UCI attribution.
