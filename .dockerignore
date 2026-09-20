@@ -1,0 +1,5 @@
+*
+!requirements.lock
+!demandwatch/
+!demandwatch/**
+**/__pycache__/

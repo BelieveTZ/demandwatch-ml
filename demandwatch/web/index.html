@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DemandWatch ML · Bike demand forecasting backtest</title>
+<meta name="description" content="Historical backtest dashboard for hourly bike demand forecasting, prediction intervals and drift monitoring. Washington, DC, 2011–2012.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip-link" href="#workspace">Skip to dashboard</a>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">DW</span>
+      <span class="brand-text">
+        <strong>DemandWatch</strong>
+        <span>Forecasting &amp; monitoring</span>
+      </span>
+    </div>
+
+    <nav class="nav" aria-label="Dashboard sections">
+      <div class="tablist" role="tablist" aria-orientation="vertical">
+        <button type="button" class="nav-item" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true" data-panel="overview">
+          <svg class="nav-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><rect x="2.5" y="2.5" width="6" height="6" rx="1.4"/><rect x="11.5" y="2.5" width="6" height="6" rx="1.4"/><rect x="2.5" y="11.5" width="6" height="6" rx="1.4"/><rect x="11.5" y="11.5" width="6" height="6" rx="1.4"/></svg>
+          <span>Overview</span>
+        </button>
+        <button type="button" class="nav-item" role="tab" id="tab-lab" aria-controls="panel-lab" aria-selected="false" tabindex="-1" data-panel="lab">
+          <svg class="nav-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M4 16.5V9.8M9 16.5V4.2M14 16.5v-5.4" stroke-linecap="round"/><path d="M2.2 16.5h15.6" stroke-linecap="round"/></svg>
+          <span>Forecast Lab</span>
+        </button>
+        <button type="button" class="nav-item" role="tab" id="tab-monitoring" aria-controls="panel-monitoring" aria-selected="false" tabindex="-1" data-panel="monitoring">
+          <svg class="nav-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M2.4 10.6h3.1l2-5 2.9 9.4 2.2-6.1 1.5 3.1h3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Monitoring</span>
+        </button>
+        <button type="button" class="nav-item" role="tab" id="tab-methods" aria-controls="panel-methods" aria-selected="false" tabindex="-1" data-panel="methods">
+          <svg class="nav-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M4 3.4h8.2A3.3 3.3 0 0 1 15.5 6.7v9.9H7.3A3.3 3.3 0 0 1 4 13.3z" stroke-linejoin="round"/><path d="M7 7.4h5.5M7 10.4h5.5" stroke-linecap="round"/></svg>
+          <span>Methods</span>
+        </button>
+      </div>
+    </nav>
+
+    <div class="sidebar-foot">
+      <p class="sidebar-note">Local portfolio prototype</p>
+      <a class="sidebar-link" href="https://github.com/BelieveTZ/demandwatch-ml" target="_blank" rel="noopener noreferrer">Source repository</a>
+    </div>
+  </aside>
+
+  <main class="workspace" id="workspace">
+
+    <header class="topbar">
+      <div class="topbar-main">
+        <p class="eyebrow">Workspace</p>
+        <h1>DemandWatch ML</h1>
+        <p class="context-label">Historical backtest · Washington, DC · 2011–2012</p>
+      </div>
+      <dl class="run-meta">
+        <div><dt>Run</dt><dd id="meta-run-id">—</dd></div>
+        <div><dt>Recorded (UTC)</dt><dd id="meta-created">—</dd></div>
+      </dl>
+    </header>
+
+    <div id="app-status" class="status-region" role="status" aria-live="polite"></div>
+
+    <!-- ============================= OVERVIEW ============================= -->
+    <section class="panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" tabindex="0" hidden>
+
+      <div class="panel-head">
+        <div>
+          <h2>Overview</h2>
+          <p class="panel-sub">Held-out test block, one-hour-ahead rolling evaluation. Every number below is read from the saved evaluation report.</p>
+        </div>
+        <button type="button" class="btn btn-ghost" id="download-report">
+          <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false" class="btn-icon"><path d="M10 3v9m0 0 3.4-3.4M10 12 6.6 8.6M3.6 15.4h12.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span id="download-label">Download report (JSON)</span>
+        </button>
+      </div>
+
+      <div class="stats">
+        <article class="stat">
+          <p class="stat-label" id="stat-mae-label">Test MAE · selected model</p>
+          <p class="stat-value" id="stat-mae-value">—</p>
+          <p class="stat-sub" id="stat-mae-sub">—</p>
+        </article>
+        <article class="stat">
+          <p class="stat-label">Interval coverage · test block</p>
+          <p class="stat-value" id="stat-cov-value">—</p>
+          <p class="stat-sub" id="stat-cov-sub">—</p>
+        </article>
+        <article class="stat">
+          <p class="stat-label">Inference latency · p95</p>
+          <p class="stat-value" id="stat-lat-value">—</p>
+          <p class="stat-sub" id="stat-lat-sub">—</p>
+        </article>
+        <article class="stat">
+          <p class="stat-label">Selected model</p>
+          <p class="stat-value stat-value-text" id="stat-model-value">—</p>
+          <p class="stat-sub" id="stat-model-sub">—</p>
+        </article>
+      </div>
+
+      <div class="split">
+        <section class="card chart-card" aria-labelledby="chart-title">
+          <div class="card-head">
+            <div>
+              <h3 id="chart-title">Actual vs forecast · test window</h3>
+              <p class="card-sub" id="chart-meta">—</p>
+            </div>
+            <div class="range-controls">
+              <label class="field" for="range-granularity">
+                <span>Range</span>
+                <select id="range-granularity">
+                  <option value="all">Full test window</option>
+                  <option value="day">Single day</option>
+                  <option value="week">Single week</option>
+                </select>
+              </label>
+              <label class="field" for="range-value" id="range-value-wrap" hidden>
+                <span>Period</span>
+                <select id="range-value"></select>
+              </label>
+            </div>
+          </div>
+
+          <ul class="legend" id="chart-legend">
+            <li class="legend-item"><span class="swatch swatch-actual" aria-hidden="true"></span>Actual demand</li>
+            <li class="legend-item"><span class="swatch swatch-pred" aria-hidden="true"></span>Forecast (<span id="legend-model">selected model</span>)</li>
+            <li class="legend-item"><span class="swatch swatch-band" aria-hidden="true"></span><span id="legend-interval">90% interval</span></li>
+            <li class="legend-item legend-toggle">
+              <input type="checkbox" id="show-seasonal" checked>
+              <label for="show-seasonal">Seasonal 168h baseline</label>
+            </li>
+          </ul>
+
+          <div class="chart-host" id="chart-host"></div>
+          <p class="chart-readout" id="chart-readout">Point at the chart to read individual hours.</p>
+          <p class="chart-summary" id="chart-summary">—</p>
+        </section>
+
+        <aside class="card side-card" aria-labelledby="side-title">
+          <h3 id="side-title">Selected model</h3>
+          <p class="side-model" id="side-model-name">—</p>
+          <p class="muted small" id="side-model-note">—</p>
+
+          <h4 class="side-h4">Run facts</h4>
+          <dl class="facts" id="run-facts"></dl>
+
+          <h4 class="side-h4">How to read this</h4>
+          <ul class="tight small">
+            <li>One-hour-ahead rolling evaluation, not a fixed-origin 24-hour forecast.</li>
+            <li>Weather inputs are lagged by one hour; target-hour weather is never used.</li>
+            <li>The band is calibrated on past residuals, so coverage is empirical rather than guaranteed.</li>
+            <li>Latency figures come from this machine and are hardware-dependent.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="split-even">
+        <section class="card" aria-labelledby="models-title">
+          <div class="card-head">
+            <div>
+              <h3 id="models-title">Model comparison · test block</h3>
+              <p class="card-sub" id="models-sub">Identical eligible rows, chronological split, no shuffling.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <caption class="sr-only">Test-block error metrics for each candidate model</caption>
+              <thead>
+                <tr><th scope="col">Model</th><th scope="col" class="num">Rows</th><th scope="col" class="num">MAE</th><th scope="col" class="num">RMSE</th><th scope="col" class="num">MAE vs best</th></tr>
+              </thead>
+              <tbody id="model-table-body"></tbody>
+            </table>
+          </div>
+          <p class="card-note">Lower is better. Rows are the eligible hours scored in the test block; the selected model is highlighted.</p>
+        </section>
+
+        <section class="card" aria-labelledby="importance-title">
+          <div class="card-head">
+            <div>
+              <h3 id="importance-title">Model reliance</h3>
+              <p class="card-sub" id="importance-sub">Permutation importance on held-out rows: MAE increase when a feature is shuffled.</p>
+            </div>
+          </div>
+          <div class="bars" id="importance-chart"></div>
+          <p class="card-note" id="importance-note">Reliance is not causality: correlated features can mask one another, and shuffling temporal inputs creates combinations that never occur in sequence.</p>
+        </section>
+      </div>
+
+      <section class="card" aria-labelledby="slices-title">
+        <div class="card-head">
+          <div>
+            <h3 id="slices-title">Slice errors · test block</h3>
+            <p class="card-sub">Error and interval coverage by segment. Weak slices are reported, not filtered out.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <caption class="sr-only">Test-block error and coverage by data slice</caption>
+            <thead>
+              <tr><th scope="col">Slice</th><th scope="col" class="num">Rows</th><th scope="col" class="num">MAE</th><th scope="col" class="num">RMSE</th><th scope="col" class="num">Coverage</th></tr>
+            </thead>
+            <tbody id="slice-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="limits-title">
+        <div class="card-head">
+          <div>
+            <h3 id="limits-title">Limitations</h3>
+            <p class="card-sub">Recorded by the run itself. These bound what the dashboard above can claim.</p>
+          </div>
+          <button type="button" class="btn btn-ghost" data-goto="methods">Full method notes</button>
+        </div>
+        <ul class="caveat-list" id="overview-caveats"></ul>
+      </section>
+    </section>
+
+    <!-- ============================ FORECAST LAB =========================== -->
+    <section class="panel" id="panel-lab" role="tabpanel" aria-labelledby="tab-lab" tabindex="0" hidden>
+
+      <div class="panel-head">
+        <div>
+          <h2>Forecast Lab</h2>
+          <p class="panel-sub">Start from a saved test-set hour, then optionally change five lag and weather inputs to build a hypothetical scenario.</p>
+        </div>
+      </div>
+
+      <div class="notice notice-info" id="live-mode-note" role="note">
+        <p class="notice-title" id="live-mode-title">Checking the local API…</p>
+        <p class="notice-body" id="live-mode-body">Saved replay · Start the local API to run new predictions</p>
+      </div>
+
+      <div class="lab-grid">
+        <section class="card" aria-labelledby="saved-title">
+          <div class="card-head">
+            <div>
+              <h3 id="saved-title">Saved historical output</h3>
+              <p class="card-sub">Recorded in the evaluation report for a real test-set hour. This is a saved backtest record, not a new model call.</p>
+            </div>
+            <span class="chip chip-neutral">Saved replay</span>
+          </div>
+
+          <label class="field field-wide" for="example-select">
+            <span>Saved example</span>
+            <select id="example-select"></select>
+          </label>
+          <p class="muted small" id="example-meta">—</p>
+
+          <div class="mini-bars" id="saved-bars"></div>
+
+          <dl class="kv" id="saved-facts"></dl>
+        </section>
+
+        <section class="card" aria-labelledby="live-title">
+          <div class="card-head">
+            <div>
+              <h3 id="live-title">Live model output</h3>
+              <p class="card-sub">Optional. Calls the local FastAPI service when it is running.</p>
+            </div>
+            <span class="chip chip-neutral" id="live-chip">Checking API…</span>
+          </div>
+
+          <p class="muted small" id="live-note">Checking the local API for a live model.</p>
+
+          <div class="actions">
+            <button type="button" class="btn btn-primary" id="run-live" disabled>Run live prediction</button>
+            <button type="button" class="btn btn-ghost" id="reset-inputs">Reset inputs to saved example</button>
+          </div>
+
+          <p class="field-error" id="input-error" role="alert" hidden></p>
+          <p class="whatif" id="whatif-note" hidden>Edited inputs describe a hypothetical what-if. The model encodes correlation, not cause and effect, and no changed input guarantees a changed outcome. Live output is not compared with the saved actual demand.</p>
+
+          <div class="live-result" id="live-result"></div>
+          <p class="field-error" id="live-error" role="alert" hidden></p>
+        </section>
+      </div>
+
+      <section class="card" aria-labelledby="features-title">
+        <div class="card-head">
+          <div>
+            <h3 id="features-title">Feature vector</h3>
+            <p class="card-sub">Values for the selected example. Five inputs are editable; the remaining features stay exactly as recorded in the report.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="table table-inputs">
+            <caption class="sr-only">Model input features for the selected saved example, with editable lag and weather inputs</caption>
+            <thead>
+              <tr><th scope="col">Feature</th><th scope="col">Meaning</th><th scope="col" class="num">Value</th><th scope="col">Kind</th></tr>
+            </thead>
+            <tbody id="feature-table-body"></tbody>
+          </table>
+        </div>
+        <p class="card-note">All features are computed from information available before the target hour. Demand lags and rolling means exclude the target hour; weather is shifted by one hour.</p>
+      </section>
+    </section>
+
+    <!-- ============================= MONITORING ============================ -->
+    <section class="panel" id="panel-monitoring" role="tabpanel" aria-labelledby="tab-monitoring" tabindex="0" hidden>
+
+      <div class="panel-head">
+        <div>
+          <h2>Monitoring</h2>
+          <p class="panel-sub">Population Stability Index against the calibration window. Offline diagnostics computed from the saved report — not live production alerts.</p>
+        </div>
+      </div>
+
+      <section class="card" aria-labelledby="window-title">
+        <div class="card-head">
+          <div>
+            <h3 id="window-title">Window</h3>
+            <p class="card-sub">Both windows are compared with the same calibration reference.</p>
+          </div>
+          <fieldset class="segmented-field">
+            <legend class="sr-only">Monitoring window</legend>
+            <div class="segmented">
+              <label class="seg-item">
+                <input type="radio" name="monitor-window" value="observed" checked>
+                <span>Observed test window</span>
+              </label>
+              <label class="seg-item">
+                <input type="radio" name="monitor-window" value="shifted">
+                <span>Synthetic stress test</span>
+              </label>
+            </div>
+          </fieldset>
+        </div>
+
+        <div class="chips" id="monitor-chips"></div>
+        <p class="card-note" id="monitor-state-note">—</p>
+      </section>
+
+      <div class="split">
+        <section class="card" aria-labelledby="psi-title">
+          <div class="card-head">
+            <div>
+              <h3 id="psi-title">PSI by feature</h3>
+              <p class="card-sub" id="psi-sub">Dashed line marks the alert threshold.</p>
+            </div>
+          </div>
+          <div class="bars psi-bars" id="psi-chart"></div>
+          <p class="card-note" id="psi-note">PSI is a heuristic distribution check, not a statistical test and not proof that accuracy has dropped.</p>
+        </section>
+
+        <aside class="card side-card" aria-labelledby="stress-title">
+          <h3 id="stress-title">What the stress test does</h3>
+          <p class="small">The synthetic window adds 0.25 to prior normalized temperature (clipped to 0–1) and multiplies demand lag and rolling-mean features by 1.6. It tests monitor behavior on an artificial shift. Some values move closer to the autumn reference, so fewer alerts can result.</p>
+          <h4 class="side-h4">Reading the numbers</h4>
+          <ul class="tight small">
+            <li>The reference is the calibration window, not the training set.</li>
+            <li>0.2 is this project's review threshold, not a statistical significance level.</li>
+            <li>Trend and calendar features can shift between windows by construction; expect non-zero PSI there.</li>
+            <li>Distribution change is a prompt to investigate, not evidence of error. Confirm with delayed labels and interval coverage.</li>
+          </ul>
+          <h4 class="side-h4">Window comparison</h4>
+          <dl class="facts" id="monitor-compare"></dl>
+        </aside>
+      </div>
+
+      <section class="card" aria-labelledby="psi-table-title">
+        <div class="card-head">
+          <div>
+            <h3 id="psi-table-title">PSI table</h3>
+            <p class="card-sub" id="psi-table-sub">Sorted by PSI, descending.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <caption class="sr-only">PSI values and alert flags per feature</caption>
+            <thead>
+              <tr><th scope="col">Feature</th><th scope="col" class="num">PSI</th><th scope="col" class="num">Threshold</th><th scope="col">State</th></tr>
+            </thead>
+            <tbody id="psi-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <!-- ============================== METHODS ============================== -->
+    <section class="panel" id="panel-methods" role="tabpanel" aria-labelledby="tab-methods" tabindex="0" hidden>
+
+      <div class="panel-head">
+        <div>
+          <h2>Methods</h2>
+          <p class="panel-sub">What was actually run, and where the claims stop.</p>
+        </div>
+      </div>
+
+      <div class="split-even">
+        <section class="card" aria-labelledby="protocol-title">
+          <h3 id="protocol-title">Evaluation protocol</h3>
+          <ul class="method-list">
+            <li><strong>Exact chronological split.</strong> Train, validation, calibration and test are non-overlapping blocks in time order; boundaries are fixed before test scores are read and no shuffling is used.</li>
+            <li><strong>Rolling one-hour-ahead evaluation.</strong> Each prediction is scored against the next hour using counts that had already arrived before that hour. This is not a 24-hour forecast from one fixed origin.</li>
+            <li><strong>Lagged weather only.</strong> The model sees <code>temp_previous</code>, <code>humidity_previous</code>, <code>wind_previous</code> and <code>weather_previous</code>. Target-hour weather is excluded, so this is not an oracle-weather backtest.</li>
+            <li><strong>Missing timestamps are excluded, not zeroed.</strong> The source is reindexed onto a complete hourly grid; lags and rolling windows are joined by timestamp, and rows without a complete feature vector are dropped rather than filled with zero demand.</li>
+            <li><strong>No target leakage.</strong> <code>casual</code> and <code>registered</code> are dropped because UCI defines <code>cnt</code> as their sum; <code>instant</code> is an identifier, not a demand measurement.</li>
+            <li><strong>Empirical intervals.</strong> A split-conformal radius is taken as the order statistic of absolute calibration residuals at rank <code>ceil((n+1)·0.9)</code>, then applied symmetrically with a floor at zero. Coverage is measured on the test block after the fact.</li>
+            <li><strong>Temporal dependence.</strong> Exchangeability does not hold for time series, so 90% is a target and a measured result, not a per-hour guarantee for future demand.</li>
+            <li><strong>Reliance, not causality.</strong> Permutation importance reports how much held-out MAE grows when a feature is shuffled. It is an approximate diagnostic for a fitted model, not a causal effect.</li>
+            <li><strong>Local CPU inference.</strong> Training and prediction run on CPU only; the fitted model artifact is persisted to local disk and loaded by the API. No external service is called at prediction time.</li>
+            <li><strong>Monitoring scope.</strong> PSI compares a window against the calibration reference at a heuristic 0.2 threshold. Alerts indicate distribution change; accuracy loss must be confirmed with delayed ground-truth labels.</li>
+          </ul>
+        </section>
+
+        <section class="card" aria-labelledby="facts-title">
+          <h3 id="facts-title">Dataset &amp; run facts</h3>
+          <dl class="facts facts-wide" id="dataset-facts"></dl>
+          <h4 class="side-h4" id="config-heading" hidden>Fitted configuration</h4>
+          <dl class="facts facts-wide" id="config-facts"></dl>
+          <h4 class="side-h4">Source &amp; attribution</h4>
+          <ul class="tight small">
+            <li>Fanaee-T, H. (2013). <em>Bike Sharing</em> [Dataset]. UCI Machine Learning Repository. DOI <a href="https://doi.org/10.24432/C5W894" target="_blank" rel="noopener noreferrer">10.24432/C5W894</a>.</li>
+            <li>Licensed <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Hourly Capital Bikeshare rentals, Washington, DC, 2011–2012.</li>
+            <li>Source file: <a href="https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset" target="_blank" rel="noopener noreferrer">UCI dataset page</a> · code: <a href="https://github.com/BelieveTZ/demandwatch-ml" target="_blank" rel="noopener noreferrer">github.com/BelieveTZ/demandwatch-ml</a>.</li>
+          </ul>
+        </section>
+      </div>
+
+      <section class="card" aria-labelledby="splits-title">
+        <div class="card-head">
+          <div>
+            <h3 id="splits-title">Chronological blocks</h3>
+            <p class="card-sub">Rows are eligible hours after feature construction; blocks never overlap.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <caption class="sr-only">Chronological split blocks with row counts and date boundaries</caption>
+            <thead>
+              <tr><th scope="col">Block</th><th scope="col" class="num">Rows</th><th scope="col">Start</th><th scope="col">End</th><th scope="col">Use</th></tr>
+            </thead>
+            <tbody id="splits-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="split-even">
+        <section class="card" aria-labelledby="val-title">
+          <h3 id="val-title">Validation block · model selection</h3>
+          <div class="table-wrap">
+            <table class="table">
+              <caption class="sr-only">Validation-block metrics used to select the model</caption>
+              <thead>
+                <tr><th scope="col">Model</th><th scope="col" class="num">Rows</th><th scope="col" class="num">MAE</th><th scope="col" class="num">RMSE</th></tr>
+              </thead>
+              <tbody id="validation-table-body"></tbody>
+            </table>
+          </div>
+          <p class="card-note">The configuration is chosen on this block only; the test block is reported once.</p>
+        </section>
+
+        <section class="card" aria-labelledby="caveats-title">
+          <h3 id="caveats-title">Caveats recorded by the run</h3>
+          <ul class="caveat-list" id="methods-caveats"></ul>
+        </section>
+      </div>
+    </section>
+
+    <footer class="site-foot">
+      <p>DemandWatch ML · Local portfolio prototype. Backtest diagnostics only — no production traffic is monitored and no live alerting is claimed.</p>
+      <p class="small">
+        Data: <a href="https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset" target="_blank" rel="noopener noreferrer">UCI Bike Sharing</a>, DOI <a href="https://doi.org/10.24432/C5W894" target="_blank" rel="noopener noreferrer">10.24432/C5W894</a>, CC BY 4.0 ·
+        Code: <a href="https://github.com/BelieveTZ/demandwatch-ml" target="_blank" rel="noopener noreferrer">BelieveTZ/demandwatch-ml</a>
+      </p>
+    </footer>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
