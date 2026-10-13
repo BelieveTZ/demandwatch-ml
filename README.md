@@ -3,7 +3,7 @@
 **Hourly demand forecasting, honest uncertainty, and model monitoring — from raw data to a working API.**
 
 [![Verify](https://github.com/BelieveTZ/demandwatch-ml/actions/workflows/ci.yml/badge.svg)](https://github.com/BelieveTZ/demandwatch-ml/actions/workflows/ci.yml)
-[Open dashboard](https://BelieveTZ.github.io/demandwatch-ml/) · [Measured evaluation](docs/EVALUATION.md) · [中文项目与面试指南](docs/INTERVIEW_ZH.md)
+[Open dashboard](https://BelieveTZ.github.io/demandwatch-ml/) · [Measured evaluation](docs/EVALUATION.md)
 
 DemandWatch predicts next-hour Capital Bikeshare demand using only calendar information and earlier observations. It compares simple seasonal baselines, Ridge regression and histogram gradient boosting, calibrates an uncertainty interval, and exposes validated inference with delayed-label monitoring.
 
